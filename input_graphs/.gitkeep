@@ -1,0 +1,2 @@
+# This file ensures the input_graphs directory is tracked by git
+# Place your graph data in subdirectories like: input_graphs/robokop_v1/

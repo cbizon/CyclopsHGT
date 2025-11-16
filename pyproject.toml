@@ -1,0 +1,16 @@
+[project]
+name = "cyclopshgt"
+version = "0.1.0"
+description = "Heterogeneous Graph Transformer on ROBOKOP biomedical knowledge graph"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.3.4",
+    "pandas>=2.3.3",
+    "pytest>=9.0.1",
+    "scikit-learn>=1.7.2",
+    "torch>=2.9.1",
+    "tqdm>=4.67.1",
+]
+
+# NOTE: DGL is NOT listed in dependencies because it requires platform-specific installation
+# See INSTALL.md for DGL installation instructions
