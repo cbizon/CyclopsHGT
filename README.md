@@ -94,10 +94,15 @@ Results are saved to the output directory:
 
 ```
 output/experiment_1/
-├── config.json          # Training configuration
-├── metadata.json        # Graph statistics
-├── best_model.pt        # Best model checkpoint
-└── results.json         # Final test metrics
+├── config.json               # Training configuration
+├── metadata.json             # Graph statistics
+├── best_model.pt             # Best model checkpoint
+├── training_log.tsv          # Epoch-by-epoch training progress
+├── edge_metrics.tsv          # Per-edge-type test metrics
+├── final_test_metrics.tsv    # Overall test performance
+├── train_edges.tsv           # Training set edges
+├── val_edges.tsv             # Validation set edges
+└── test_edges.tsv            # Test set edges
 ```
 
 ## Evaluation Metrics
@@ -109,6 +114,29 @@ The model reports three metrics per edge type:
 - **AUC**: Area Under Curve approximation - probability positive scores higher than negative
 
 Metrics are computed both overall and per predicate type, with special focus on rare predicates.
+
+## Making Predictions
+
+After training a model, you can generate predictions for specific entity pairs:
+
+```bash
+./predict_indications.sh
+```
+
+Or use the predict script directly:
+
+```bash
+uv run python src/predict.py \
+  --model_dir output/experiment_1 \
+  --graph_dir input_graphs/robokop_v1 \
+  --pairs_file "medic/Indications List.csv" \
+  --head_col "final normalized drug id" \
+  --tail_col "final normalized disease id" \
+  --predicate "treats" \
+  --output_dir predictions/experiment_1_indications
+```
+
+This generates predictions for all drug-disease pairs, excluding training edges. See [docs/PREDICTION.md](docs/PREDICTION.md) for detailed documentation.
 
 ## Example Workflow
 
@@ -133,7 +161,20 @@ Metrics are computed both overall and per predicate type, with special focus on 
 
 4. **Analyze results:**
    ```bash
-   cat output/baseline/results.json
+   cat output/baseline/final_test_metrics.tsv
+   cat output/baseline/edge_metrics.tsv
+   ```
+
+5. **Generate predictions:**
+   ```bash
+   uv run python src/predict.py \
+     --model_dir output/baseline \
+     --graph_dir input_graphs/robokop_v1 \
+     --pairs_file "medic/Indications List.csv" \
+     --head_col "final normalized drug id" \
+     --tail_col "final normalized disease id" \
+     --predicate "treats" \
+     --output_dir predictions/baseline_indications
    ```
 
 ## Project Structure
@@ -145,10 +186,16 @@ Metrics are computed both overall and per predicate type, with special focus on 
 │   ├── data_split.py        # Train/val/test splitting and negative sampling
 │   ├── model.py             # HGT model architecture
 │   ├── train.py             # Training and evaluation utilities
-│   └── main.py              # Main training script
+│   ├── main.py              # Main training script
+│   └── predict.py           # Generate predictions from trained model
+├── docs/
+│   └── PREDICTION.md        # Prediction documentation
 ├── tests/                   # Unit tests
 ├── input_graphs/            # Input graph data
 ├── output/                  # Training outputs
+├── predictions/             # Prediction outputs
+├── medic/                   # External evaluation data
+├── predict_indications.sh   # Example prediction script
 ├── INSTALL.md               # Installation instructions
 ├── CLAUDE.md                # Project instructions for Claude
 └── README.md                # This file

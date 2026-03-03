@@ -74,18 +74,28 @@ class HGT(nn.Module):
         Forward pass through HGT.
 
         Args:
-            g: Input graph
+            g: Input homogeneous graph (converted from heterogeneous)
             return_all_layers: If True, return embeddings from all layers
 
         Returns:
             Node embeddings dictionary {node_type: embeddings}
             If return_all_layers=True, returns list of embedding dicts
         """
-        # Get initial embeddings
-        h = {
-            ntype: self.embed[ntype](torch.arange(g.num_nodes(ntype), device=next(self.parameters()).device))
-            for ntype in self.node_types
-        }
+        device = next(self.parameters()).device
+
+        # Get initial embeddings from node types
+        # g should have 'ntype' attribute from to_homogeneous
+        node_types = g.ndata[dgl.NTYPE]
+
+        # Create embedding lookup for all nodes based on their type
+        h = torch.zeros(g.num_nodes(), self.n_hidden, device=device)
+        for ntype_id, ntype in enumerate(self.node_types):
+            mask = (node_types == ntype_id)
+            if mask.any():
+                # For homogeneous graph, node IDs are global
+                # Use sequential IDs within each type for embedding lookup
+                num_nodes_of_type = mask.sum().item()
+                h[mask] = self.embed[ntype](torch.arange(num_nodes_of_type, device=device))
 
         if return_all_layers:
             all_h = [h]
@@ -95,19 +105,35 @@ class HGT(nn.Module):
             # Store previous embeddings for residual
             h_prev = h
 
-            # Apply HGT layer
+            # Apply HGT layer with homogeneous format
             h = layer(g, h, g.ndata['_TYPE'], g.edata['_TYPE'], presorted=False)
 
             # Apply layer norm and residual connection
-            h = {ntype: norm(h_emb) + h_prev[ntype] for ntype, h_emb in h.items()}
+            h = norm(h) + h_prev
 
             if return_all_layers:
                 all_h.append(h)
 
-        if return_all_layers:
-            return all_h
+        # Convert back to heterogeneous format (dict)
+        h_dict = {}
+        for ntype_id, ntype in enumerate(self.node_types):
+            mask = (node_types == ntype_id)
+            if mask.any():
+                h_dict[ntype] = h[mask]
 
-        return h
+        if return_all_layers:
+            # Convert all layers to dict format
+            all_h_dict = []
+            for h_layer in all_h:
+                h_layer_dict = {}
+                for ntype_id, ntype in enumerate(self.node_types):
+                    mask = (node_types == ntype_id)
+                    if mask.any():
+                        h_layer_dict[ntype] = h_layer[mask]
+                all_h_dict.append(h_layer_dict)
+            return all_h_dict
+
+        return h_dict
 
 
 class LinkPredictor(nn.Module):
